@@ -16,34 +16,6 @@ import {
 const canvas = document.getElementById("c") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-// const mesh: Mesh = {
-//   tris: [
-//     // SOUTH
-//     triangle(vec3(0, 0, 0), vec3(0, 1, 0), vec3(1, 1, 0)),
-//     triangle(vec3(0, 0, 0), vec3(1, 1, 0), vec3(1, 0, 0)),
-
-//     // EAST
-//     triangle(vec3(1, 0, 0), vec3(1, 1, 0), vec3(1, 1, 1)),
-//     triangle(vec3(1, 0, 0), vec3(1, 1, 1), vec3(1, 0, 1)),
-
-//     // NORTH
-//     triangle(vec3(1, 0, 1), vec3(1, 1, 1), vec3(0, 1, 1)),
-//     triangle(vec3(1, 0, 1), vec3(0, 1, 1), vec3(0, 0, 1)),
-
-//     // WEST
-//     triangle(vec3(0, 0, 1), vec3(0, 1, 1), vec3(0, 1, 0)),
-//     triangle(vec3(0, 0, 1), vec3(0, 1, 0), vec3(0, 0, 0)),
-
-//     // TOP
-//     triangle(vec3(0, 1, 0), vec3(0, 1, 1), vec3(1, 1, 1)),
-//     triangle(vec3(0, 1, 0), vec3(1, 1, 1), vec3(1, 1, 0)),
-
-//     // TOP
-//     triangle(vec3(1, 0, 1), vec3(0, 0, 1), vec3(0, 0, 0)),
-//     triangle(vec3(1, 0, 1), vec3(0, 0, 0), vec3(1, 0, 0)),
-//   ],
-// };
-
 const fNear = 0.1;
 const fFar = 1000;
 const fFov = Math.PI / 2;
@@ -163,7 +135,7 @@ function parseObj(s: string): Mesh {
   return { tris };
 }
 
-fetch("VideoShip.obj")
+fetch("models/VideoShip.obj")
   .then((response) => response.text())
   .then((text) => {
     mesh = parseObj(text);
