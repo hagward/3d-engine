@@ -1,5 +1,20 @@
+import {
+  Triangle,
+  createMatProj,
+  Vec3,
+  Mesh,
+  createMatRotZ,
+  createMatRotX,
+  multiplyMatrixVector,
+  normal,
+  dotProduct,
+  subtract,
+  len,
+  fillTriangle,
+} from "./3d-engine.js";
+
 const canvas = document.getElementById("c") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
 // const mesh: Mesh = {
 //   tris: [
@@ -38,9 +53,13 @@ const matProj = createMatProj(fNear, fFar, fFov, fAspectRatio);
 const vCamera = new Vec3(0, 0, 0);
 
 let angle = 0;
-let mesh: Mesh = null;
+let mesh: Mesh | null = null;
 
 function draw() {
+  if (!mesh) {
+    return;
+  }
+
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 

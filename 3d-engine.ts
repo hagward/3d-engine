@@ -1,4 +1,4 @@
-class Vec3 {
+export class Vec3 {
   x: number;
   y: number;
   z: number;
@@ -10,7 +10,7 @@ class Vec3 {
   }
 }
 
-class Triangle {
+export class Triangle {
   p: [Vec3, Vec3, Vec3];
   style?: string;
 
@@ -19,7 +19,7 @@ class Triangle {
   }
 }
 
-class Mesh {
+export class Mesh {
   tris: Triangle[];
 
   constructor(tris: Triangle[]) {
@@ -27,7 +27,7 @@ class Mesh {
   }
 }
 
-class Matrix {
+export class Matrix {
   m: number[][];
 
   constructor(m: number[][]) {
@@ -35,7 +35,7 @@ class Matrix {
   }
 }
 
-function createMatRotX(angle: number): Matrix {
+export function createMatRotX(angle: number): Matrix {
   return new Matrix([
     [1, 0, 0, 0],
     [0, Math.cos(angle * 0.5), Math.sin(angle * 0.5), 0],
@@ -44,7 +44,7 @@ function createMatRotX(angle: number): Matrix {
   ]);
 }
 
-function createMatRotZ(angle: number): Matrix {
+export function createMatRotZ(angle: number): Matrix {
   return new Matrix([
     [Math.cos(angle), Math.sin(angle), 0, 0],
     [-Math.sin(angle), Math.cos(angle), 0, 0],
@@ -53,7 +53,7 @@ function createMatRotZ(angle: number): Matrix {
   ]);
 }
 
-function createMatProj(
+export function createMatProj(
   fNear: number,
   fFar: number,
   fFov: number,
@@ -67,7 +67,7 @@ function createMatProj(
   ]);
 }
 
-function multiplyMatrixVector(v: Vec3, m: Matrix): Vec3 {
+export function multiplyMatrixVector(v: Vec3, m: Matrix): Vec3 {
   let x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
   let y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
   let z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
@@ -82,7 +82,7 @@ function multiplyMatrixVector(v: Vec3, m: Matrix): Vec3 {
   return { x, y, z };
 }
 
-function normal(t: Triangle): Vec3 {
+export function normal(t: Triangle): Vec3 {
   const line1 = new Vec3(
     t.p[1].x - t.p[0].x,
     t.p[1].y - t.p[0].y,
@@ -104,7 +104,7 @@ function normal(t: Triangle): Vec3 {
   return normal;
 }
 
-function crossProduct(v1: Vec3, v2: Vec3): Vec3 {
+export function crossProduct(v1: Vec3, v2: Vec3): Vec3 {
   return new Vec3(
     v1.y * v2.z - v1.z * v2.y,
     v1.z * v2.x - v1.x * v2.z,
@@ -112,19 +112,19 @@ function crossProduct(v1: Vec3, v2: Vec3): Vec3 {
   );
 }
 
-function dotProduct(v1: Vec3, v2: Vec3): number {
+export function dotProduct(v1: Vec3, v2: Vec3): number {
   return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
-function subtract(v1: Vec3, v2: Vec3): Vec3 {
+export function subtract(v1: Vec3, v2: Vec3): Vec3 {
   return new Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 }
 
-function len(v: Vec3): number {
+export function len(v: Vec3): number {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-function drawTriangle(
+export function drawTriangle(
   t: Triangle,
   ctx: CanvasRenderingContext2D,
   style = "black"
@@ -138,7 +138,7 @@ function drawTriangle(
   ctx.stroke();
 }
 
-function fillTriangle(
+export function fillTriangle(
   t: Triangle,
   ctx: CanvasRenderingContext2D,
   style = "white"
