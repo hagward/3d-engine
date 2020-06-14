@@ -29,69 +29,38 @@ const ctx = canvas.getContext("2d");
 //   ],
 // };
 
-let mesh: Mesh = null;
-
 const fNear = 0.1;
 const fFar = 1000;
 const fFov = Math.PI / 2;
 const fAspectRatio = canvas.height / canvas.width;
 
-const vCamera: Vec3 = {
-  x: 0,
-  y: 0,
-  z: 0,
-};
-
-const matProj: Matrix = {
-  m: [
-    [fAspectRatio * fFov, 0, 0, 0],
-    [0, fFov, 0, 0],
-    [0, 0, fFar / (fFar - fNear), 1],
-    [0, 0, (-fFar * fNear) / (fFar - fNear), 0],
-  ],
-};
+const matProj = createMatProj(fNear, fFar, fFov, fAspectRatio);
+const vCamera = new Vec3(0, 0, 0);
 
 let angle = 0;
+let mesh: Mesh = null;
 
 function draw() {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const matRotZ: Matrix = {
-    m: [
-      [Math.cos(angle), Math.sin(angle), 0, 0],
-      [-Math.sin(angle), Math.cos(angle), 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ],
-  };
-
-  const matRotX: Matrix = {
-    m: [
-      [1, 0, 0, 0],
-      [0, Math.cos(angle * 0.5), Math.sin(angle * 0.5), 0],
-      [0, -Math.sin(angle * 0.5), Math.cos(angle * 0.5), 0],
-      [0, 0, 0, 1],
-    ],
-  };
+  const matRotZ = createMatRotZ(angle);
+  const matRotX = createMatRotX(angle * 0.5);
 
   const trianglesToRaster: Triangle[] = [];
 
   for (const tri of mesh.tris) {
-    const triRotatedZ: Triangle = {
-      p: [
-        multiplyMatrixVector(tri.p[0], matRotZ),
-        multiplyMatrixVector(tri.p[1], matRotZ),
-        multiplyMatrixVector(tri.p[2], matRotZ),
-      ],
-    };
-    const triRotatedX: Triangle = {
-      p: [
-        multiplyMatrixVector(triRotatedZ.p[0], matRotX),
-        multiplyMatrixVector(triRotatedZ.p[1], matRotX),
-        multiplyMatrixVector(triRotatedZ.p[2], matRotX),
-      ],
-    };
+    // Rotate.
+    const triRotatedZ = new Triangle(
+      multiplyMatrixVector(tri.p[0], matRotZ),
+      multiplyMatrixVector(tri.p[1], matRotZ),
+      multiplyMatrixVector(tri.p[2], matRotZ)
+    );
+    const triRotatedX = new Triangle(
+      multiplyMatrixVector(triRotatedZ.p[0], matRotX),
+      multiplyMatrixVector(triRotatedZ.p[1], matRotX),
+      multiplyMatrixVector(triRotatedZ.p[2], matRotX)
+    );
 
     // Offset into the screen.
     const triTranslated = triRotatedX;
@@ -99,67 +68,26 @@ function draw() {
     triTranslated.p[1].z += 10;
     triTranslated.p[2].z += 10;
 
-    const line1: Vec3 = {
-      x: triTranslated.p[1].x - triTranslated.p[0].x,
-      y: triTranslated.p[1].y - triTranslated.p[0].y,
-      z: triTranslated.p[1].z - triTranslated.p[0].z,
-    };
-
-    const line2: Vec3 = {
-      x: triTranslated.p[2].x - triTranslated.p[0].x,
-      y: triTranslated.p[2].y - triTranslated.p[0].y,
-      z: triTranslated.p[2].z - triTranslated.p[0].z,
-    };
-
-    const normal: Vec3 = {
-      x: line1.y * line2.z - line1.z * line2.y,
-      y: line1.z * line2.x - line1.x * line2.z,
-      z: line1.x * line2.y - line1.y * line2.x,
-    };
-
-    let len = Math.sqrt(
-      normal.x * normal.x + normal.y * normal.y + normal.z * normal.z
-    );
-    normal.x /= len;
-    normal.y /= len;
-    normal.z /= len;
-
-    let dotProd =
-      normal.x * (triTranslated.p[0].x - vCamera.x) +
-      normal.y * (triTranslated.p[0].y - vCamera.y) +
-      normal.z * (triTranslated.p[0].z - vCamera.z);
+    const vNormal = normal(triTranslated);
+    let dotProd = dotProduct(vNormal, subtract(triTranslated.p[0], vCamera));
 
     if (dotProd < 0) {
       // Illumination.
-      const lightDirection: Vec3 = {
-        x: 0,
-        y: 0,
-        z: -1,
-      };
-      len = Math.sqrt(
-        lightDirection.x * lightDirection.x +
-          lightDirection.y * lightDirection.y +
-          lightDirection.z * lightDirection.z
-      );
-      lightDirection.x /= len;
-      lightDirection.y /= len;
-      lightDirection.z /= len;
-      dotProd =
-        normal.x * lightDirection.x +
-        normal.y * lightDirection.y +
-        normal.z * lightDirection.z;
-
+      const vLightDirection = new Vec3(0, 0, -1);
+      const length = len(vLightDirection);
+      vLightDirection.x /= length;
+      vLightDirection.y /= length;
+      vLightDirection.z /= length;
+      dotProd = dotProduct(vNormal, vLightDirection);
       const c = ((dotProd + 1) / 2) * 255;
 
       // Project triangles from 3D into 2D.
-      const triProjected: Triangle = {
-        p: [
-          multiplyMatrixVector(triTranslated.p[0], matProj),
-          multiplyMatrixVector(triTranslated.p[1], matProj),
-          multiplyMatrixVector(triTranslated.p[2], matProj),
-        ],
-        style: `rgb(${c}, ${c}, ${c})`,
-      };
+      const triProjected = new Triangle(
+        multiplyMatrixVector(triTranslated.p[0], matProj),
+        multiplyMatrixVector(triTranslated.p[1], matProj),
+        multiplyMatrixVector(triTranslated.p[2], matProj)
+      );
+      triProjected.style = `rgb(${c}, ${c}, ${c})`;
 
       // Scale into view.
       for (const p of triProjected.p) {
@@ -171,10 +99,9 @@ function draw() {
       }
 
       trianglesToRaster.push(triProjected);
-      // fillTriangle(triProjected, ctx, triProjected.style);
-      // drawTriangle(triProjected, ctx);
     }
 
+    // Sort by depth (painter's algorithm).
     trianglesToRaster.sort((a, b) => {
       const z1 = (a.p[0].z + a.p[1].z + a.p[2].z) / 3;
       const z2 = (b.p[0].z + b.p[1].z + b.p[2].z) / 3;
@@ -208,20 +135,14 @@ function parseObj(s: string): Mesh {
     const c = Number(p[3]);
 
     if (p[0] === "v") {
-      verts.push({
-        x: a,
-        y: b,
-        z: c,
-      });
+      verts.push(new Vec3(a, b, c));
     } else if (p[0] === "f") {
-      tris.push(triangle(verts[a - 1], verts[b - 1], verts[c - 1]));
+      tris.push(new Triangle(verts[a - 1], verts[b - 1], verts[c - 1]));
     }
   }
 
   return { tris };
 }
-
-// requestAnimationFrame(draw);
 
 fetch("VideoShip.obj")
   .then((response) => response.text())
