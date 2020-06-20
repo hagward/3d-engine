@@ -2,11 +2,50 @@ export class Vec3 {
   x: number;
   y: number;
   z: number;
+  w: number;
 
   constructor(x: number, y: number, z: number) {
     this.x = x;
     this.y = y;
     this.z = z;
+    this.w = 1;
+  }
+
+  get length(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+  }
+
+  add(v: Vec3): Vec3 {
+    return new Vec3(this.x + v.x, this.y + v.y, this.z + v.z);
+  }
+
+  sub(v: Vec3): Vec3 {
+    return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
+  }
+
+  mul(k: number): Vec3 {
+    return new Vec3(this.x * k, this.y * k, this.z * k);
+  }
+
+  div(k: number): Vec3 {
+    return new Vec3(this.x / k, this.y / k, this.z / k);
+  }
+
+  crossProduct(v: Vec3): Vec3 {
+    return new Vec3(
+      this.y * v.z - this.z * v.y,
+      this.z * v.x - this.x * v.z,
+      this.x * v.y - this.y * v.x
+    );
+  }
+
+  dotProduct(v: Vec3): number {
+    return this.x * v.x + this.y * v.y + this.z * v.z;
+  }
+
+  normalize(): Vec3 {
+    const l = this.length;
+    return new Vec3(this.x / l, this.y / l, this.z / l);
   }
 }
 
@@ -16,6 +55,12 @@ export class Triangle {
 
   constructor(p1: Vec3, p2: Vec3, p3: Vec3) {
     this.p = [p1, p2, p3];
+  }
+
+  get normal(): Vec3 {
+    const line1 = this.p[1].sub(this.p[0]);
+    const line2 = this.p[2].sub(this.p[0]);
+    return line1.crossProduct(line2).normalize();
   }
 }
 
@@ -33,95 +78,100 @@ export class Matrix {
   constructor(m: number[][]) {
     this.m = m;
   }
-}
 
-export function createMatRotX(angle: number): Matrix {
-  return new Matrix([
-    [1, 0, 0, 0],
-    [0, Math.cos(angle * 0.5), Math.sin(angle * 0.5), 0],
-    [0, -Math.sin(angle * 0.5), Math.cos(angle * 0.5), 0],
-    [0, 0, 0, 1],
-  ]);
-}
-
-export function createMatRotZ(angle: number): Matrix {
-  return new Matrix([
-    [Math.cos(angle), Math.sin(angle), 0, 0],
-    [-Math.sin(angle), Math.cos(angle), 0, 0],
-    [0, 0, 1, 0],
-    [0, 0, 0, 1],
-  ]);
-}
-
-export function createMatProj(
-  fNear: number,
-  fFar: number,
-  fFov: number,
-  fAspectRatio: number
-): Matrix {
-  return new Matrix([
-    [fAspectRatio * fFov, 0, 0, 0],
-    [0, fFov, 0, 0],
-    [0, 0, fFar / (fFar - fNear), 1],
-    [0, 0, (-fFar * fNear) / (fFar - fNear), 0],
-  ]);
-}
-
-export function multiplyMatrixVector(v: Vec3, m: Matrix): Vec3 {
-  let x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
-  let y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
-  let z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
-  const w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
-
-  if (w !== 0) {
-    x /= w;
-    y /= w;
-    z /= w;
+  static identity(): Matrix {
+    return new Matrix([
+      [1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ]);
   }
 
-  return { x, y, z };
-}
+  static rotationX(angle: number): Matrix {
+    return new Matrix([
+      [1, 0, 0, 0],
+      [0, Math.cos(angle), Math.sin(angle), 0],
+      [0, -Math.sin(angle), Math.cos(angle), 0],
+      [0, 0, 0, 1],
+    ]);
+  }
 
-export function normal(t: Triangle): Vec3 {
-  const line1 = new Vec3(
-    t.p[1].x - t.p[0].x,
-    t.p[1].y - t.p[0].y,
-    t.p[1].z - t.p[0].z
-  );
+  static rotationY(angle: number): Matrix {
+    return new Matrix([
+      [Math.cos(angle), 0, Math.sin(angle), 0],
+      [0, 1, 0, 0],
+      [-Math.sin(angle), 0, Math.cos(angle), 0],
+      [0, 0, 0, 1],
+    ]);
+  }
 
-  const line2 = new Vec3(
-    t.p[2].x - t.p[0].x,
-    t.p[2].y - t.p[0].y,
-    t.p[2].z - t.p[0].z
-  );
+  static rotationZ(angle: number): Matrix {
+    return new Matrix([
+      [Math.cos(angle), Math.sin(angle), 0, 0],
+      [-Math.sin(angle), Math.cos(angle), 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ]);
+  }
 
-  const normal = crossProduct(line1, line2);
-  const length = len(normal);
-  normal.x /= length;
-  normal.y /= length;
-  normal.z /= length;
+  static projection(
+    fNear: number,
+    fFar: number,
+    fFov: number,
+    fAspectRatio: number
+  ): Matrix {
+    return new Matrix([
+      [fAspectRatio * fFov, 0, 0, 0],
+      [0, fFov, 0, 0],
+      [0, 0, fFar / (fFar - fNear), 1],
+      [0, 0, (-fFar * fNear) / (fFar - fNear), 0],
+    ]);
+  }
 
-  return normal;
-}
+  static translation(x: number, y: number, z: number): Matrix {
+    return new Matrix([
+      [1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [x, y, z, 1],
+    ]);
+  }
 
-export function crossProduct(v1: Vec3, v2: Vec3): Vec3 {
-  return new Vec3(
-    v1.y * v2.z - v1.z * v2.y,
-    v1.z * v2.x - v1.x * v2.z,
-    v1.x * v2.y - v1.y * v2.x
-  );
-}
+  mulVec(v: Vec3): Vec3 {
+    const m = this.m;
+    const x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + v.w * m[3][0];
+    const y = v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1] + v.w * m[3][1];
+    const z = v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2] + v.w * m[3][2];
+    const w = v.x * m[0][3] + v.y * m[1][3] + v.z * m[2][3] + v.w * m[3][3];
 
-export function dotProduct(v1: Vec3, v2: Vec3): number {
-  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
+    const result = new Vec3(x, y, z);
+    result.w = w;
+    return result;
+  }
 
-export function subtract(v1: Vec3, v2: Vec3): Vec3 {
-  return new Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
-}
+  mulMat(mat: Matrix): Matrix {
+    const m1 = this.m;
+    const m2 = mat.m;
+    const result: number[][] = [];
 
-export function len(v: Vec3): number {
-  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (m1[0].length !== m2.length) {
+      throw new Error("Columns and rows do not match");
+    }
+
+    for (let i = 0; i < m1.length; i++) {
+      result.push([]);
+      for (let j = 0; j < m2[0].length; j++) {
+        let sum = 0;
+        for (let k = 0; k < m1[0].length; k++) {
+          sum += m1[i][k] * m2[k][j];
+        }
+        result[i].push(sum);
+      }
+    }
+
+    return new Matrix(result);
+  }
 }
 
 export function drawTriangle(

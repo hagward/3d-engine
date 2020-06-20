@@ -1,17 +1,4 @@
-import {
-  Triangle,
-  createMatProj,
-  Vec3,
-  Mesh,
-  createMatRotZ,
-  createMatRotX,
-  multiplyMatrixVector,
-  normal,
-  dotProduct,
-  subtract,
-  len,
-  fillTriangle,
-} from "./3d-engine.js";
+import { fillTriangle, Matrix, Mesh, Triangle, Vec3 } from "./3d-engine.js";
 
 const canvas = document.getElementById("c") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -21,7 +8,7 @@ const fFar = 1000;
 const fFov = Math.PI / 2;
 const fAspectRatio = canvas.height / canvas.width;
 
-const matProj = createMatProj(fNear, fFar, fFov, fAspectRatio);
+const matProj = Matrix.projection(fNear, fFar, fFov, fAspectRatio);
 const vCamera = new Vec3(0, 0, 0);
 
 let angle = 0;
@@ -35,58 +22,52 @@ function draw() {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const matRotZ = createMatRotZ(angle);
-  const matRotX = createMatRotX(angle * 0.5);
+  const matRotZ = Matrix.rotationZ(angle);
+  const matRotX = Matrix.rotationX(angle * 0.5);
+  const matTrans = Matrix.translation(0, 0, 16);
+  const matWorld = matRotZ.mulMat(matRotX).mulMat(matTrans);
 
   const trianglesToRaster: Triangle[] = [];
 
   for (const tri of mesh.tris) {
-    // Rotate.
-    const triRotatedZ = new Triangle(
-      multiplyMatrixVector(tri.p[0], matRotZ),
-      multiplyMatrixVector(tri.p[1], matRotZ),
-      multiplyMatrixVector(tri.p[2], matRotZ)
-    );
-    const triRotatedX = new Triangle(
-      multiplyMatrixVector(triRotatedZ.p[0], matRotX),
-      multiplyMatrixVector(triRotatedZ.p[1], matRotX),
-      multiplyMatrixVector(triRotatedZ.p[2], matRotX)
+    const triTransformed = new Triangle(
+      matWorld.mulVec(tri.p[0]),
+      matWorld.mulVec(tri.p[1]),
+      matWorld.mulVec(tri.p[2])
     );
 
-    // Offset into the screen.
-    const triTranslated = triRotatedX;
-    triTranslated.p[0].z += 10;
-    triTranslated.p[1].z += 10;
-    triTranslated.p[2].z += 10;
+    const vNormal = triTransformed.normal;
+    const vCameraRay = triTransformed.p[0].sub(vCamera);
 
-    const vNormal = normal(triTranslated);
-    let dotProd = dotProduct(vNormal, subtract(triTranslated.p[0], vCamera));
-
-    if (dotProd < 0) {
+    // If ray is aligned with normal, then the triangle is visible.
+    if (vNormal.dotProduct(vCameraRay) < 0) {
       // Illumination.
-      const vLightDirection = new Vec3(0, 0, -1);
-      const length = len(vLightDirection);
-      vLightDirection.x /= length;
-      vLightDirection.y /= length;
-      vLightDirection.z /= length;
-      dotProd = dotProduct(vNormal, vLightDirection);
-      const c = ((dotProd + 1) / 2) * 255;
+      const vLightDirection = new Vec3(0, 0, -1).normalize();
 
-      // Project triangles from 3D into 2D.
+      // How "aligned" are light direction and triangle surface normal?
+      const dp = vLightDirection.dotProduct(vNormal);
+      const c = ((dp + 1) / 2) * 255;
+      const style = `rgb(${c}, ${c}, ${c})`;
+
+      // Project triangles from 3D to 2D.
       const triProjected = new Triangle(
-        multiplyMatrixVector(triTranslated.p[0], matProj),
-        multiplyMatrixVector(triTranslated.p[1], matProj),
-        multiplyMatrixVector(triTranslated.p[2], matProj)
+        matProj.mulVec(triTransformed.p[0]),
+        matProj.mulVec(triTransformed.p[1]),
+        matProj.mulVec(triTransformed.p[2])
       );
-      triProjected.style = `rgb(${c}, ${c}, ${c})`;
+      triProjected.style = style;
 
-      // Scale into view.
-      for (const p of triProjected.p) {
-        p.x += 1;
-        p.y += 1;
+      // Normalize into cartesian space.
+      triProjected.p[0] = triProjected.p[0].div(triProjected.p[0].w);
+      triProjected.p[1] = triProjected.p[1].div(triProjected.p[1].w);
+      triProjected.p[2] = triProjected.p[2].div(triProjected.p[2].w);
 
-        p.x *= 0.5 * canvas.width;
-        p.y *= 0.5 * canvas.height;
+      // Offset vertices into visible normalized space.
+      const vOffsetView = new Vec3(1, 1, 0);
+      for (let i = 0; i < triProjected.p.length; i++) {
+        triProjected.p[i] = triProjected.p[i].add(vOffsetView);
+        triProjected.p[i].x *= 0.5 * canvas.width;
+        triProjected.p[i].y *= 0.5 * canvas.height;
       }
 
       trianglesToRaster.push(triProjected);
