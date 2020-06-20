@@ -138,6 +138,26 @@ export class Matrix {
     ]);
   }
 
+  static pointAt(pos: Vec3, target: Vec3, up: Vec3): Matrix {
+    // Calculate new forward direction.
+    const newForward = target.sub(pos).normalize();
+
+    // Calculate the new up direction.
+    const a = newForward.mul(up.dotProduct(newForward));
+    const newUp = up.sub(a).normalize();
+
+    // Calculate new right direction.
+    const newRight = newUp.crossProduct(newForward);
+
+    // Construct dimensioning and translation matrix.
+    return new Matrix([
+      [newRight.x, newRight.y, newRight.z, 0],
+      [newUp.x, newUp.y, newUp.z, 0],
+      [newForward.x, newForward.y, newForward.z, 0],
+      [pos.x, pos.y, pos.z, 1],
+    ]);
+  }
+
   mulVec(v: Vec3): Vec3 {
     const m = this.m;
     const x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + v.w * m[3][0];
@@ -172,32 +192,30 @@ export class Matrix {
 
     return new Matrix(result);
   }
-}
 
-export function drawTriangle(
-  t: Triangle,
-  ctx: CanvasRenderingContext2D,
-  style = "black"
-): void {
-  ctx.strokeStyle = style;
-  ctx.beginPath();
-  ctx.moveTo(t.p[0].x, t.p[0].y);
-  ctx.lineTo(t.p[1].x, t.p[1].y);
-  ctx.lineTo(t.p[2].x, t.p[2].y);
-  ctx.lineTo(t.p[0].x, t.p[0].y);
-  ctx.stroke();
-}
-
-export function fillTriangle(
-  t: Triangle,
-  ctx: CanvasRenderingContext2D,
-  style = "white"
-): void {
-  ctx.fillStyle = style;
-  ctx.beginPath();
-  ctx.moveTo(t.p[0].x, t.p[0].y);
-  ctx.lineTo(t.p[1].x, t.p[1].y);
-  ctx.lineTo(t.p[2].x, t.p[2].y);
-  ctx.lineTo(t.p[0].x, t.p[0].y);
-  ctx.fill();
+  quickInverse(): Matrix {
+    const m = this.m;
+    const matrix = new Matrix([
+      [m[0][0], m[1][0], m[2][0], 0],
+      [m[0][1], m[1][1], m[2][1], 0],
+      [m[0][2], m[1][2], m[2][2], 0],
+      [0, 0, 0, 1],
+    ]);
+    matrix.m[3][0] = -(
+      m[3][0] * matrix.m[0][0] +
+      m[3][1] * matrix.m[1][0] +
+      m[3][2] * matrix.m[2][0]
+    );
+    matrix.m[3][1] = -(
+      m[3][0] * matrix.m[0][1] +
+      m[3][1] * matrix.m[1][1] +
+      m[3][2] * matrix.m[2][1]
+    );
+    matrix.m[3][2] = -(
+      m[3][0] * matrix.m[0][2] +
+      m[3][1] * matrix.m[1][2] +
+      m[3][2] * matrix.m[2][2]
+    );
+    return matrix;
+  }
 }
