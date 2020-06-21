@@ -75,6 +75,8 @@ const vCamera = new gl.Vec3D(0, 0, 0);
 const vLookDir = new gl.Vec3D(0, 0, 1);
 
 let angle = 0;
+let now = -1;
+let fps = 0;
 let mesh: gl.Mesh | null = null;
 
 function draw() {
@@ -95,8 +97,18 @@ function draw() {
     vCamera.x -= 0.1;
   }
 
+  // Clear screen.
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw fps counter.
+  const newNow = Date.now();
+  if (now > -1) {
+    fps = 1000 / (newNow - now);
+    ctx.fillStyle = "white";
+    ctx.fillText(`FPS: ${Math.floor(fps)}`, 10, 20);
+  }
+  now = newNow;
 
   const matRotZ = gl.rotateZMatrix(angle * 0.5);
   const matRotX = gl.rotateXMatrix(angle);
