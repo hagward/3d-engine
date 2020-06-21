@@ -1,4 +1,4 @@
-import { Matrix, Mesh, Triangle, Vec3 } from "./3d-engine.js";
+import * as gl from "./3d-engine.js";
 
 const canvas = document.getElementById("c") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -44,7 +44,7 @@ document.addEventListener("keyup", (event) => {
   }
 });
 
-function drawTriangle(t: Triangle): void {
+function drawTriangle(t: gl.Triangle): void {
   ctx.strokeStyle = "black";
   ctx.beginPath();
   ctx.moveTo(canvas.width - t.p[0].x, canvas.height - t.p[0].y);
@@ -54,7 +54,7 @@ function drawTriangle(t: Triangle): void {
   ctx.stroke();
 }
 
-function fillTriangle(t: Triangle): void {
+function fillTriangle(t: gl.Triangle): void {
   ctx.fillStyle = t.style || "white";
   ctx.beginPath();
   ctx.moveTo(canvas.width - t.p[0].x, canvas.height - t.p[0].y);
@@ -69,13 +69,13 @@ const fFar = 1000;
 const fFov = Math.PI / 2;
 const fAspectRatio = canvas.height / canvas.width;
 
-const matProj = Matrix.projection(fNear, fFar, fFov, fAspectRatio);
+const matProj = gl.perspectiveMatrix(fFov, fAspectRatio, fNear, fFar);
 
-const vCamera = new Vec3(0, 0, 0);
-const vLookDir = new Vec3(0, 0, 1);
+const vCamera = new gl.Vec3D(0, 0, 0);
+const vLookDir = new gl.Vec3D(0, 0, 1);
 
 let angle = 0;
-let mesh: Mesh | null = null;
+let mesh: gl.Mesh | null = null;
 
 function draw() {
   if (!mesh) {
@@ -98,34 +98,34 @@ function draw() {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const matRotZ = Matrix.rotationZ(angle * 0.5);
-  const matRotX = Matrix.rotationX(angle);
-  const matTrans = Matrix.translation(0, 0, 5);
-  const matWorld = matRotZ.mulMat(matRotX).mulMat(matTrans);
+  const matRotZ = gl.rotateZMatrix(angle * 0.5);
+  const matRotX = gl.rotateXMatrix(angle);
+  const matTrans = gl.translateMatrix(0, 0, 5);
+  const matWorld = matRotZ.multiplyMatrix(matRotX).multiplyMatrix(matTrans);
 
-  const vUp = new Vec3(0, 1, 0);
+  const vUp = new gl.Vec3D(0, 1, 0);
   const vTarget = vCamera.add(vLookDir);
-  const matCamera = Matrix.pointAt(vCamera, vTarget, vUp);
+  const matCamera = gl.pointAtMatrix(vCamera, vTarget, vUp);
 
   // Make view matrix from camera.
   const matView = matCamera.quickInverse();
 
-  const trianglesToRaster: Triangle[] = [];
+  const trianglesToRaster: gl.Triangle[] = [];
 
   for (const tri of mesh.tris) {
-    const triTransformed = new Triangle(
-      matWorld.mulVec(tri.p[0]),
-      matWorld.mulVec(tri.p[1]),
-      matWorld.mulVec(tri.p[2])
+    const triTransformed = new gl.Triangle(
+      matWorld.multiplyVector(tri.p[0]),
+      matWorld.multiplyVector(tri.p[1]),
+      matWorld.multiplyVector(tri.p[2])
     );
 
     const vNormal = triTransformed.normal;
-    const vCameraRay = triTransformed.p[0].sub(vCamera);
+    const vCameraRay = triTransformed.p[0].subtract(vCamera);
 
     // If ray is aligned with normal, then the triangle is visible.
     if (vNormal.dotProduct(vCameraRay) < 0) {
       // Illumination.
-      const vLightDirection = new Vec3(0, 0, -1).normalize();
+      const vLightDirection = new gl.Vec3D(0, 0, -1).normalize();
 
       // How "aligned" are light direction and triangle surface normal?
       const dp = vLightDirection.dotProduct(vNormal);
@@ -133,27 +133,27 @@ function draw() {
       const style = `rgb(${c}, ${c}, ${c})`;
 
       // Convert world space to view space.
-      const triViewed = new Triangle(
-        matView.mulVec(triTransformed.p[0]),
-        matView.mulVec(triTransformed.p[1]),
-        matView.mulVec(triTransformed.p[2])
+      const triViewed = new gl.Triangle(
+        matView.multiplyVector(triTransformed.p[0]),
+        matView.multiplyVector(triTransformed.p[1]),
+        matView.multiplyVector(triTransformed.p[2])
       );
 
       // Project triangles from 3D to 2D.
-      const triProjected = new Triangle(
-        matProj.mulVec(triViewed.p[0]),
-        matProj.mulVec(triViewed.p[1]),
-        matProj.mulVec(triViewed.p[2])
+      const triProjected = new gl.Triangle(
+        matProj.multiplyVector(triViewed.p[0]),
+        matProj.multiplyVector(triViewed.p[1]),
+        matProj.multiplyVector(triViewed.p[2])
       );
       triProjected.style = style;
 
       // Normalize into cartesian space.
-      triProjected.p[0] = triProjected.p[0].div(triProjected.p[0].w);
-      triProjected.p[1] = triProjected.p[1].div(triProjected.p[1].w);
-      triProjected.p[2] = triProjected.p[2].div(triProjected.p[2].w);
+      triProjected.p[0] = triProjected.p[0].divide(triProjected.p[0].w);
+      triProjected.p[1] = triProjected.p[1].divide(triProjected.p[1].w);
+      triProjected.p[2] = triProjected.p[2].divide(triProjected.p[2].w);
 
       // Offset vertices into visible normalized space.
-      const vOffsetView = new Vec3(1, 1, 0);
+      const vOffsetView = new gl.Vec3D(1, 1, 0);
       for (let i = 0; i < triProjected.p.length; i++) {
         triProjected.p[i] = triProjected.p[i].add(vOffsetView);
         triProjected.p[i].x *= 0.5 * canvas.width;
@@ -181,9 +181,9 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
-function parseObj(s: string): Mesh {
-  const verts: Vec3[] = [];
-  const tris: Triangle[] = [];
+function parseObj(s: string): gl.Mesh {
+  const verts: gl.Vec3D[] = [];
+  const tris: gl.Triangle[] = [];
 
   for (const line of s.split("\n")) {
     const p = line.split(" ");
@@ -197,9 +197,9 @@ function parseObj(s: string): Mesh {
     const c = Number(p[3]);
 
     if (p[0] === "v") {
-      verts.push(new Vec3(a, b, c));
+      verts.push(new gl.Vec3D(a, b, c));
     } else if (p[0] === "f") {
-      tris.push(new Triangle(verts[a - 1], verts[b - 1], verts[c - 1]));
+      tris.push(new gl.Triangle(verts[a - 1], verts[b - 1], verts[c - 1]));
     }
   }
 

@@ -1,65 +1,65 @@
-export class Vec3 {
+export class Vec3D {
   x: number;
   y: number;
   z: number;
   w: number;
 
-  constructor(x: number, y: number, z: number) {
+  constructor(x: number, y: number, z: number, w = 1) {
     this.x = x;
     this.y = y;
     this.z = z;
-    this.w = 1;
+    this.w = w;
   }
 
   get length(): number {
     return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
 
-  add(v: Vec3): Vec3 {
-    return new Vec3(this.x + v.x, this.y + v.y, this.z + v.z);
+  add(v: Vec3D): Vec3D {
+    return new Vec3D(this.x + v.x, this.y + v.y, this.z + v.z);
   }
 
-  sub(v: Vec3): Vec3 {
-    return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z);
+  subtract(v: Vec3D): Vec3D {
+    return new Vec3D(this.x - v.x, this.y - v.y, this.z - v.z);
   }
 
-  mul(k: number): Vec3 {
-    return new Vec3(this.x * k, this.y * k, this.z * k);
+  multiply(k: number): Vec3D {
+    return new Vec3D(this.x * k, this.y * k, this.z * k);
   }
 
-  div(k: number): Vec3 {
-    return new Vec3(this.x / k, this.y / k, this.z / k);
+  divide(k: number): Vec3D {
+    return new Vec3D(this.x / k, this.y / k, this.z / k);
   }
 
-  crossProduct(v: Vec3): Vec3 {
-    return new Vec3(
+  crossProduct(v: Vec3D): Vec3D {
+    return new Vec3D(
       this.y * v.z - this.z * v.y,
       this.z * v.x - this.x * v.z,
       this.x * v.y - this.y * v.x
     );
   }
 
-  dotProduct(v: Vec3): number {
+  dotProduct(v: Vec3D): number {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
 
-  normalize(): Vec3 {
+  normalize(): Vec3D {
     const l = this.length;
-    return new Vec3(this.x / l, this.y / l, this.z / l);
+    return new Vec3D(this.x / l, this.y / l, this.z / l);
   }
 }
 
 export class Triangle {
-  p: [Vec3, Vec3, Vec3];
+  p: [Vec3D, Vec3D, Vec3D];
   style?: string;
 
-  constructor(p1: Vec3, p2: Vec3, p3: Vec3) {
+  constructor(p1: Vec3D, p2: Vec3D, p3: Vec3D) {
     this.p = [p1, p2, p3];
   }
 
-  get normal(): Vec3 {
-    const line1 = this.p[1].sub(this.p[0]);
-    const line2 = this.p[2].sub(this.p[0]);
+  get normal(): Vec3D {
+    const line1 = this.p[1].subtract(this.p[0]);
+    const line2 = this.p[2].subtract(this.p[0]);
     return line1.crossProduct(line2).normalize();
   }
 }
@@ -72,112 +72,33 @@ export class Mesh {
   }
 }
 
-export class Matrix {
+export class Mat4 {
   m: number[][];
 
   constructor(m: number[][]) {
+    if (m.length !== 4 || m[0].length !== 4) {
+      throw new Error("Not a 4x4 matrix");
+    }
+
     this.m = m;
   }
 
-  static identity(): Matrix {
-    return new Matrix([
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ]);
-  }
-
-  static rotationX(angle: number): Matrix {
-    return new Matrix([
-      [1, 0, 0, 0],
-      [0, Math.cos(angle), Math.sin(angle), 0],
-      [0, -Math.sin(angle), Math.cos(angle), 0],
-      [0, 0, 0, 1],
-    ]);
-  }
-
-  static rotationY(angle: number): Matrix {
-    return new Matrix([
-      [Math.cos(angle), 0, Math.sin(angle), 0],
-      [0, 1, 0, 0],
-      [-Math.sin(angle), 0, Math.cos(angle), 0],
-      [0, 0, 0, 1],
-    ]);
-  }
-
-  static rotationZ(angle: number): Matrix {
-    return new Matrix([
-      [Math.cos(angle), Math.sin(angle), 0, 0],
-      [-Math.sin(angle), Math.cos(angle), 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ]);
-  }
-
-  static projection(
-    fNear: number,
-    fFar: number,
-    fFov: number,
-    fAspectRatio: number
-  ): Matrix {
-    return new Matrix([
-      [fAspectRatio * fFov, 0, 0, 0],
-      [0, fFov, 0, 0],
-      [0, 0, fFar / (fFar - fNear), 1],
-      [0, 0, (-fFar * fNear) / (fFar - fNear), 0],
-    ]);
-  }
-
-  static translation(x: number, y: number, z: number): Matrix {
-    return new Matrix([
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0],
-      [x, y, z, 1],
-    ]);
-  }
-
-  static pointAt(pos: Vec3, target: Vec3, up: Vec3): Matrix {
-    // Calculate new forward direction.
-    const newForward = target.sub(pos).normalize();
-
-    // Calculate the new up direction.
-    const a = newForward.mul(up.dotProduct(newForward));
-    const newUp = up.sub(a).normalize();
-
-    // Calculate new right direction.
-    const newRight = newUp.crossProduct(newForward);
-
-    // Construct dimensioning and translation matrix.
-    return new Matrix([
-      [newRight.x, newRight.y, newRight.z, 0],
-      [newUp.x, newUp.y, newUp.z, 0],
-      [newForward.x, newForward.y, newForward.z, 0],
-      [pos.x, pos.y, pos.z, 1],
-    ]);
-  }
-
-  mulVec(v: Vec3): Vec3 {
+  multiplyVector(v: Vec3D): Vec3D {
     const m = this.m;
     const x = v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0] + v.w * m[3][0];
     const y = v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1] + v.w * m[3][1];
     const z = v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2] + v.w * m[3][2];
     const w = v.x * m[0][3] + v.y * m[1][3] + v.z * m[2][3] + v.w * m[3][3];
 
-    const result = new Vec3(x, y, z);
+    const result = new Vec3D(x, y, z);
     result.w = w;
     return result;
   }
 
-  mulMat(mat: Matrix): Matrix {
+  multiplyMatrix(mat: Mat4): Mat4 {
     const m1 = this.m;
     const m2 = mat.m;
     const result: number[][] = [];
-
-    if (m1[0].length !== m2.length) {
-      throw new Error("Columns and rows do not match");
-    }
 
     for (let i = 0; i < m1.length; i++) {
       result.push([]);
@@ -190,12 +111,12 @@ export class Matrix {
       }
     }
 
-    return new Matrix(result);
+    return new Mat4(result);
   }
 
-  quickInverse(): Matrix {
+  quickInverse(): Mat4 {
     const m = this.m;
-    const matrix = new Matrix([
+    const matrix = new Mat4([
       [m[0][0], m[1][0], m[2][0], 0],
       [m[0][1], m[1][1], m[2][1], 0],
       [m[0][2], m[1][2], m[2][2], 0],
@@ -218,4 +139,74 @@ export class Matrix {
     );
     return matrix;
   }
+}
+
+export function rotateXMatrix(angle: number): Mat4 {
+  return new Mat4([
+    [1, 0, 0, 0],
+    [0, Math.cos(angle), Math.sin(angle), 0],
+    [0, -Math.sin(angle), Math.cos(angle), 0],
+    [0, 0, 0, 1],
+  ]);
+}
+
+export function rotateYMatrix(angle: number): Mat4 {
+  return new Mat4([
+    [Math.cos(angle), 0, Math.sin(angle), 0],
+    [0, 1, 0, 0],
+    [-Math.sin(angle), 0, Math.cos(angle), 0],
+    [0, 0, 0, 1],
+  ]);
+}
+
+export function rotateZMatrix(angle: number): Mat4 {
+  return new Mat4([
+    [Math.cos(angle), Math.sin(angle), 0, 0],
+    [-Math.sin(angle), Math.cos(angle), 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+  ]);
+}
+
+export function perspectiveMatrix(
+  fFov: number,
+  fAspectRatio: number,
+  fNear: number,
+  fFar: number
+): Mat4 {
+  return new Mat4([
+    [fAspectRatio * fFov, 0, 0, 0],
+    [0, fFov, 0, 0],
+    [0, 0, fFar / (fFar - fNear), 1],
+    [0, 0, (-fFar * fNear) / (fFar - fNear), 0],
+  ]);
+}
+
+export function translateMatrix(x: number, y: number, z: number): Mat4 {
+  return new Mat4([
+    [1, 0, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+    [x, y, z, 1],
+  ]);
+}
+
+export function pointAtMatrix(pos: Vec3D, target: Vec3D, up: Vec3D): Mat4 {
+  // Calculate new forward direction.
+  const newForward = target.subtract(pos).normalize();
+
+  // Calculate the new up direction.
+  const a = newForward.multiply(up.dotProduct(newForward));
+  const newUp = up.subtract(a).normalize();
+
+  // Calculate new right direction.
+  const newRight = newUp.crossProduct(newForward);
+
+  // Construct dimensioning and translation matrix.
+  return new Mat4([
+    [newRight.x, newRight.y, newRight.z, 0],
+    [newUp.x, newUp.y, newUp.z, 0],
+    [newForward.x, newForward.y, newForward.z, 0],
+    [pos.x, pos.y, pos.z, 1],
+  ]);
 }
